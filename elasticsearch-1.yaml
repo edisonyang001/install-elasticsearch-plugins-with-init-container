@@ -1,0 +1,55 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-demo
+  namespace: elastic-system
+spec:
+  version: 7.5.1
+  image: elasticsearch:7.5.1
+  updateStrategy:
+    changeBudget:
+      maxSurge: 1
+      maxUnavailable: 1
+  http:
+    service:
+      spec:
+        type: ClusterIP
+    tls:
+      selfSignedCertificate:
+        disabled: false
+  nodes:
+  - nodeCount: 2
+    config:
+      node.master: true
+      node.data: true
+      node.ingest: true
+    setVmMaxMapCount: true
+    podTemplate:
+      spec:
+        initContainers:
+        - name: install-plugins
+          command:
+          - "sh"
+          - "-c"
+          - |
+            bin/elasticsearch-plugin install analysis-smartcn
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: -Xms2G -Xmx2G
+          resources:
+            requests:
+              memory: 4Gi
+            limits:
+              memory: 4Gi
+          volumeMounts:
+          - name: es-data
+            mountPath: /data
+            readOnly: true
+        volumes:
+        - name: es-data
+          hostPath:
+          path: /es-data
+        - name: elasticsearch-data         
+          emptyDir: {}
